@@ -9,11 +9,11 @@ layout: doc
 
 # Floppy bird on real NES
 
-<video controls="controls" src="/assets/av1-floppy-bird.webm" />
+<!-- <video controls src="./../src/assets/av1-floppy-bird.webm" /> -->
 
 ---
 
-<video controls="controls" src="/assets/floppy-bird-final.mp4" />
+<video controls src="/floppy-bird/floppy-bird-final.mp4" />
 
 
 ## Assembly one the NES
@@ -33,7 +33,7 @@ On the NES numbers only go up to 256 so we can do some clever tricks to do easy 
 4. This means that every 32 pixels the 6 bit will be flipped.
 5. So we do `and` with 0010'0000 and check if its zero to see if the x is valid.
 
-![](/assets/floppy-bird-collision.png)
+![](/floppy-bird/floppy-bird-collision.png)
 
 
 ```asm
@@ -130,9 +130,9 @@ Writing collision code is way different then in normal higher level langages but
 # Gallary 
 Pictures during developement
 
-![](/assets/Screenshot155528.png)
+![](/floppy-bird/Screenshot155528.png)
 
-![](/assets/Screenshot094546.png)
+![](/floppy-bird/Screenshot094546.png)
 
-![](/assets/floppy-bird-working-tile-generation.gif)
+![](/floppy-bird/floppy-bird-working-tile-generation.gif)
 

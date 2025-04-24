@@ -2,6 +2,15 @@
 # https://vitepress.dev/reference/default-theme-home-page
 layout: home
 isHome: true
+# hero:
+
+# features:
+#     - title: Floppy bird
+#       details: 4 player assembly NES project
+#     - title: cpu rasterizer
+#       details: no GPU renderer
+#     - title: Spelunky remake
+#       details: C++ web game
 
 # hero:
 #   name: "GeleArthur-Website"
@@ -24,4 +33,16 @@ isHome: true
 #     details: Lorem ipsum dolor sit amet, consectetur adipiscing elit
 ---
 
-# Home
+# Welcome
+
+here you can find project and blog posts I make.
+
+## Projects
+
+
+
+<script setup>
+import Projects from './components/projects.vue'
+</script>
+
+<Projects />
