@@ -11,8 +11,8 @@ const projects = [
     image: '/cpu-razster/GP1_DirectX_VjErxTd65Q.png'
   },
   {
-    title: 'CPU Rasterizer',
-    path: '/projects/cpu-rasterizer',
+    title: 'Spelunky remake',
+    path: '/projects/spelunky-remake',
     image: '/cpu-razster/GP1_DirectX_VjErxTd65Q.png'
   },
 ]

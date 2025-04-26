@@ -4,7 +4,7 @@ This is a list of handy cmake snippets. For me and YOU!!!
 
 All `${PROJECT\_NAME}`  means your target.   
 # Create project   
-```
+```cmake
 cmake_minimum_required(VERSION 3.29)
 project(MyProject VERSION 1.0 LANGUAGES CXX)
 
@@ -15,7 +15,7 @@ add_executable(${PROJECT_NAME}
 ```
    
 # Cpp version   
-```
+```cmake
 # Global
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
@@ -26,25 +26,25 @@ target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
 ```
    
 # VCPKG   
-```
+```cmake
 include("$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")
 
 ```
    
 # Show resources in IDE   
-```
+```cmake
 file(GLOB_RECURSE RESOURCE_FILES "${CMAKE_CURRENT_SOURCE_DIR}/resources/*")
 add_custom_target(Resources ALL SOURCES ${RESOURCE_FILES})
 
 ```
 # MSVC default project. Only for .sln files   
-```
+```cmake
 set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ${PROJECT_NAME})
 
 ```
    
 # Create symlink   
-```
+```cmake
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E create_symlink
         "${CMAKE_CURRENT_SOURCE_DIR}/resources"
@@ -53,7 +53,7 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
 ```
    
 # Copy files   
-```
+```cmake
 file(GLOB_RECURSE RESOURCE_FILES "${CMAKE_CURRENT_SOURCE_DIR}/resources/*")
 
 foreach(RESOURCE ${RESOURCE_FILES})
@@ -72,7 +72,7 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
 # Fetch Content   
 When **configuring **the project download the required data.   
 Warning in the docs look at external project for the commands as they are the same   
-```
+```cmake
 include(FetchContent)
 
 FetchContent_Declare(
@@ -86,7 +86,7 @@ FetchContent_MakeAvailable(SDL3)
 
 ```
 # Link to library   
-```
+```cmake
 target_link_libraries(${PROJECT_NAME} PUBLIC 
     SDL3::SDL3            
 )
@@ -95,7 +95,7 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
    
 # External Project   
 When the project **builds **download the required data   
-```
+```cmake
 include(ExternalProject)
 ExternalProject_Add(foobar
   GIT_REPOSITORY    git@github.com:FooCo/FooBar.git
@@ -104,11 +104,11 @@ ExternalProject_Add(foobar
 ```
    
 # Auto gitignore build folder    
-```
+```cmake
 file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/.gitignore *)
 ```
 # Turn on all warnings   
-```
+```cmake
 target_compile_options(${PROJECT_NAME} PRIVATE
         $<$<CXX_COMPILER_ID:MSVC>:/W4 /WX>
         $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -Wpedantic -Werror>
@@ -118,7 +118,7 @@ target_compile_options(${PROJECT_NAME} PRIVATE
    
 # Commands   
 ## Make project   
-```
+```cmake
 mkdir build
 cd build
 cmake ..

@@ -9,48 +9,50 @@ layout: doc
 
 # Floppy bird on real NES
 
-<!-- <video controls src="./../src/assets/av1-floppy-bird.webm" /> -->
+<video controls src="/floppy-bird/av1-floppy-bird.webm" />
 
 ---
 
 <video controls src="/floppy-bird/floppy-bird-final.mp4" />
 
 
-## Assembly one the NES
-In the project I programmed 6502 assembly for the nintendo enternamtantd system. 
-I worked in a team with 3 other programmers. We started with reading a book (starting with nes). Its bad at explaining how the NES works but had some great examples on how to 6502 works.
+## Assembly on the NES
+In this project I programmed 6502 assembly for the Nintendo Entertainment System. I worked in a team with 3 other programmers. We started with reading a book (Classic Game Programming on the NES). Its bad at explaining how the NES works, but had some great examples on how the 6502 CPU works.
 
-Because we had access to a four score we wanted to make a 4 player game. We came up with floppy bird.
-![forscore]()
+Because we had access to a FOURSCORE we wanted to make a 4 player game. We came up with floppy bird.
+![fourscore](/floppy-bird/forescore.png)
 
 ## Collision detection
 
+On the NES numbers only go up to 255. Because of this limitation we can't program collision like it's done in higher level programming languages.
+First step is to check the X coordinate of the bird.
+
 ### Check X
-On the NES numbers only go up to 256 so we can do some clever tricks to do easy collision detection.
 1. We need to find out if the bird is colliding on the X axis.
-2. The pipes are 32 pixel a part.
-3. If we look at how numbers are repersend 0010'0000 we can see that if we set the 6 bit and the rest to 0 its 32.
-4. This means that every 32 pixels the 6 bit will be flipped.
-5. So we do `and` with 0010'0000 and check if its zero to see if the x is valid.
+2. The pipes are 32 pixels apart.
+3. The number 32 in binary is `00100000`. Only 1 bit is flipped.
+4. This means that every 32 pixels the 5th bit will be set.
+5. To see if the X is valid we do and with `00100000` and check if its zero.
+6. We have now divided the the screen up in segments of 32 which wil alternate when you are on top of a pipe or not
 
 ![](/floppy-bird/floppy-bird-collision.png)
 
 
 ```asm
-lda scroll_pos ; Load into the scroll position
+lda scroll_pos ; Load scroll position in A
 clc ; clear the carry
 adc which_player+PlayerStruct::xpos ; Add the player position
 adc #16 ; Add the player offset 
-and #%00100000 ; Do a and check with 32 bit to be true 
-bne checkY ; if its not equal to zero aka 1 we are going into the next stage for y check
+and #%00100000 ; Do AND with A and check if 5th bit is set 
+bne checkY ; if its not equal to zero aka 32 we are going into the next stage for y check
 jmp end ; if its zero we stop checking we are not in a pipe
 ```
 
 ### Check Y
-To check the Y I just checked between 2 numbers. `y > pipe1.bottom || y < pipe1.top`
-The inseting part is how do I get the pipe data?
+To check the Y coordinate of the bird, I just checked between 2 numbers. `y > pipe1.bottom || y < pipe1.top`
+The interesting part is how do I get the pipe data?
 
-Pipes data are structed like this.
+Pipes data are structured like this.
 
 ```asm
 .struct BackgroundLayout
@@ -83,12 +85,9 @@ BottomWideNameTable:
 
 ```
 
-We didn't randomly generate pipes instead we have levels that are active and get randomly chosen. This way we can have more fun pipes levels and draw in little details.
+We don't randomly generate pipes. Instead we have levels that are active and get randomly chosen. This way we can have more fun pipes levels and draw more details.
+The start of the memory block holds the collision data 4 (pipes) * 2 (up and own) amount of pipes. To find which part, I need to check if we are in the active or previous pipes map. I do this by adding the player pos and the scroll pos and see if the carry got flagged. Because if they overflow it means that I am in a different NAMETABLE.
 
-The start of the memory hold the collision data 4(pipes) * 2 (up and own) amount of pipes.
-To find which part I need to check if we are in the active or previous pipes map. 
-I do this by adding the player pos and the scroll pos and see if the carry got flagged. 
-Because if they overflow it means that I am in a different nametable.
 
 ```asm
 lda scroll_pos
@@ -97,7 +96,7 @@ adc which_player+PlayerStruct::xpos
 bcs UseActiveCollision
 ```
 
-Then the correct nametable gets set
+Then the correct NAMETABLE gets set
 
 ```asm
 ldy ptrActiveDrawnNameTable
@@ -106,10 +105,9 @@ ldy ptrActiveDrawnNameTable+1
 sty temp1+1
 ```
 
-We know which nametable we are in but we still don't know in which pipe the player is.
-The calulation of scroll_pos + player.x is still in the register so no need for loading it again.
-I then divide by 64 to get the correct pipe index. This can be done easly with left shift right
-Multiply by 2 as the pipes are 2 bytes top and bottom.
+We now know which NAMETABLE we are in, but we still don't know in which pipe the player is.
+The calculation of scroll_pos + player.x is still in the register A so no need for loading it again.
+I then divide by 64 to get the correct pipe index. This can be done easy with 5 Left Shift Right (lsr) instructions and multiplication by 2 as the pipes are 2 bytes for top and bottom.
 
 ```asm
 lsr
@@ -122,13 +120,13 @@ asl ; stride * 2
 tay ; Put in x
 ```
 
-Then I start comparing the values with the player y see if it has collided.
+Then I start comparing the values with the player’s Y coordinate see if it has collided.
 
-Writing collision code is way different then in normal higher level langages but because of these limited assembly lanague you try to find tricks to get around. There is no easy bigger then or sin or cos. Only you and your instructions.
-
+Summary: Writing collision code is way different than in normal higher level languages. Because of these limited assembly language you try to find tricks to get around. There is no easy bigger-then or sin or cos function. Only your creativity and the CPU instructions.
+Gallery 
 
 # Gallary 
-Pictures during developement
+Pictures during development
 
 ![](/floppy-bird/Screenshot155528.png)
 
@@ -136,3 +134,12 @@ Pictures during developement
 
 ![](/floppy-bird/floppy-bird-working-tile-generation.gif)
 
+![](/floppy-bird/Mesen_QBq4nAfZgi.gif)
+
+<video controls src="/floppy-bird/2024-11-26_21-18-19.mp4" />
+
+<video controls src="/floppy-bird/20241126-1742-55.1112126.mp4" />
+
+<video controls src="/floppy-bird/20241126-1903-55.8165859.mp4" />
+
+<video controls src="/floppy-bird/The_Pipes_keep_Comming.mp4" />
