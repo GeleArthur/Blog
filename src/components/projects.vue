@@ -8,12 +8,12 @@ const projects = [
   {
     title: 'CPU Rasterizer',
     path: '/projects/cpu-rasterizer',
-    image: '/cpu-razster/GP1_DirectX_VjErxTd65Q.png'
+    image: '/cpu-rasterizer/render-normal_gpu.png'
   },
   {
     title: 'Spelunky remake',
     path: '/projects/spelunky-remake',
-    image: '/cpu-razster/GP1_DirectX_VjErxTd65Q.png'
+    image: '/cpu-rasterizer/render-normal_gp.png'
   },
 ]
 </script>
@@ -35,6 +35,12 @@ const projects = [
   grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
   gap: 1.5rem;
   padding: 2rem 0;
+}
+
+@media (max-width: 420px) {
+  .project-grid {
+    grid-template-columns: 1fr; /* force single column */
+  }
 }
 
 .project-card {
