@@ -13,7 +13,7 @@ const projects = [
   {
     title: 'Spelunky remake',
     path: '/projects/spelunky-remake',
-    image: '/cpu-rasterizer/render-normal_gp.png'
+    image: '/spelunky-remake/ScreenShot1.png'
   },
 ]
 </script>

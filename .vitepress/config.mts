@@ -32,11 +32,14 @@ export default defineConfig({
         ],
       },
       { text: "Blog", link: "blog" },
+      { text: "About", link: "about"}
     ],
 
     socialLinks: [
       { icon: "github", link: "https://github.com/GeleArthur/" },
       { icon: "mastodon", link: "https://mastodon.gamedev.place/@GeleArthur" },
+      { icon: "youtube", link: "https://www.youtube.com/@gelearthur" },
+      { icon: {svg:"<span class=\"vpi-social-mastodon\" style=\"--icon: url(\'itchio.svg\');\"/>"}, link: "https://gelearthur.itch.io/" },
     ],
     
     lastUpdated: {
