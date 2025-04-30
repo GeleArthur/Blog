@@ -4,7 +4,7 @@
 # 🔪 Solving Fractions
 #math #fractions
 
-We are going to solve these. BITCH!!!!
+We are going to solve these!!!! 
 $$
 \frac a {30} = 3
 $$
