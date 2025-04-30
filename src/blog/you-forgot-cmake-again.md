@@ -2,7 +2,7 @@
 This is a list of handy cmake snippets. For me and YOU!!!
 
 
-All `${PROJECT\_NAME}`  means your target.   
+All `${PROJECT_NAME}`  means your target.   
 # Create project   
 ```cmake
 cmake_minimum_required(VERSION 3.29)
@@ -70,7 +70,7 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
 ```
    
 # Fetch Content   
-When **configuring **the project download the required data.   
+When **configuring** the project download the required data.   
 Warning in the docs look at external project for the commands as they are the same   
 ```cmake
 include(FetchContent)
@@ -94,7 +94,7 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
 ```
    
 # External Project   
-When the project **builds **download the required data   
+When the project **builds** download the required data   
 ```cmake
 include(ExternalProject)
 ExternalProject_Add(foobar
@@ -132,7 +132,7 @@ cmake --build .
 `cmake -LH`    
    
 ## Build type   
-`-DCMAKE\_BUILD\_TYPE=` Release, RelWithDebInfo, Debug   
+`-DCMAKE_BUILD_TYPE=` Release, RelWithDebInfo, Debug   
    
 ## You forgot git submodules   
 `git submodule update —init —recursive`    
