@@ -3,17 +3,23 @@ const projects = [
   {
     title: 'Floppy bird (NES)',
     path: '/projects/floppy-bird',
-    image: '/floppy-bird/floppy-bird-main.png'
+    image: '/floppy-bird/floppy-bird-main.png',
   },
   {
     title: 'CPU Rasterizer',
     path: '/projects/cpu-rasterizer',
-    image: '/cpu-rasterizer/render-normal_gpu.png'
+    image: '/cpu-rasterizer/render-normal_gpu.png',
   },
   {
     title: 'Spelunky remake',
     path: '/projects/spelunky-remake',
-    image: '/spelunky-remake/ScreenShot1.png'
+    image: '/spelunky-remake/ScreenShot1.png',
+  },
+  {
+    title: 'Website 2020',
+    path: '/wordpress/index.html',
+    image: '/wordpress/wordpress.png',
+    target: '_self'
   },
 ]
 </script>
@@ -21,7 +27,7 @@ const projects = [
 <template>
 <div class="project-grid">
   <div class="project-card" v-for="project in projects" :key="project.path">
-    <a :href="project.path">
+    <a :href="project.path" v-bind="{target: project.target ? project.target : undefined }">
       <img :src="project.image" class="thumbnail" />
       <h2>{{ project.title }}</h2>
     </a>

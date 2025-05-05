@@ -26,9 +26,10 @@ export default defineConfig({
       {
         text: "Projects",
         items: [
-          { text: "Floppy bird", link: "projects/floppy-bird.md" },
-          { text: "Cpu rasterizer", link: "projects/cpu-rasterizer.md" },
-          { text: "Spelunky remake", link: "projects/spelunky-remake.md" },
+          { text: "Floppy bird", link: "/projects/floppy-bird.md" },
+          { text: "Cpu rasterizer", link: "/projects/cpu-rasterizer.md" },
+          { text: "Spelunky remake", link: "/projects/spelunky-remake.md" },
+          { text: "Website 2020", link: "/wordpress/index.html", target: '_self', },
         ],
       },
       { text: "Blog", link: "blog" },
