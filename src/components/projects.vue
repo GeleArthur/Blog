@@ -37,8 +37,8 @@ const projects = [
 <template>
   <div class="project-grid">
     <div class="project-card" v-for="project in projects" :key="project.path">
-      <a :href="project.path" v-bind="{ target: project.target ? project.target : undefined }">
-        <img :src="project.image" class="thumbnail" />
+      <a class="project-link" :href="project.path" v-bind="{ target: project.target ? project.target : undefined }">
+         <div class="project-img" :style='{backgroundImage: `url(${project.image})`, }'></div>
         <h2>{{ project.title }}</h2>
       </a>
     </div>
@@ -84,5 +84,15 @@ const projects = [
   margin: 0.75rem 0;
   font-size: 1.2rem;
   color: var(--vp-c-text-1);
+}
+
+.project-link{
+  display: grid;
+  grid-template-rows: 5fr 1fr;
+
+  .project-img{
+    background-size: cover;
+    background-position: center;
+  }
 }
 </style>
