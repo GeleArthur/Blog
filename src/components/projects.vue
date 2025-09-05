@@ -16,6 +16,16 @@ const projects = [
     image: '/spelunky-remake/ScreenShot1.png',
   },
   {
+    title: 'Vulkan renderer',
+    path: '/projects/vulkan-renderer',
+    image: '/vulkan-renderer/vulkan-final.png',
+  },
+  {
+    title: 'HyperDash modding',
+    path: '/projects/hyperdash-hacking',
+    image: '/vulkan-renderer/vulkan-final.png',
+  },
+  {
     title: 'Website 2020',
     path: '/wordpress/index.html',
     image: '/wordpress/wordpress.png',
@@ -25,14 +35,14 @@ const projects = [
 </script>
 
 <template>
-<div class="project-grid">
-  <div class="project-card" v-for="project in projects" :key="project.path">
-    <a :href="project.path" v-bind="{target: project.target ? project.target : undefined }">
-      <img :src="project.image" class="thumbnail" />
-      <h2>{{ project.title }}</h2>
-    </a>
+  <div class="project-grid">
+    <div class="project-card" v-for="project in projects" :key="project.path">
+      <a :href="project.path" v-bind="{ target: project.target ? project.target : undefined }">
+        <img :src="project.image" class="thumbnail" />
+        <h2>{{ project.title }}</h2>
+      </a>
+    </div>
   </div>
-</div>
 </template>
 
 <style scoped>
@@ -45,16 +55,17 @@ const projects = [
 
 @media (max-width: 420px) {
   .project-grid {
-    grid-template-columns: 1fr; /* force single column */
+    grid-template-columns: 1fr;
+    /* force single column */
   }
 }
 
 .project-card {
-  background-color: var(--vp-c-bg-soft);;
+  background-color: var(--vp-c-bg-soft);
   border-radius: 1rem;
   overflow: hidden;
   text-align: center;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
   transition: transform 0.2s ease;
 }
 
