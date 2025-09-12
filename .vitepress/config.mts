@@ -26,7 +26,10 @@ export default defineConfig({
       {
         text: "Projects",
         items: [
+          { text: "Vulkan renderer", link: "/projects/vulkan-renderer.md" },
           { text: "Floppy bird", link: "/projects/floppy-bird.md" },
+          { text: "HyperDash Modding", link: "/projects/hyperdash-modding.md" },
+          { text: "Reel it in", link: "/projects/reel-it-in.md" },
           { text: "Cpu rasterizer", link: "/projects/cpu-rasterizer.md" },
           { text: "Spelunky remake", link: "/projects/spelunky-remake.md" },
           { text: "Website 2020", link: "/wordpress/index.html", target: '_self', },

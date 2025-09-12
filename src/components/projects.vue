@@ -1,9 +1,24 @@
 <script setup>
 const projects = [
   {
+    title: 'Vulkan renderer',
+    path: '/projects/vulkan-renderer',
+    image: '/vulkan-renderer/vulkan-final.png',
+  },
+  {
     title: 'Floppy bird (NES)',
     path: '/projects/floppy-bird',
     image: '/floppy-bird/floppy-bird-main.png',
+  },
+  {
+    title: 'HyperDash modding',
+    path: '/projects/hyperdash-modding',
+    image: '/hyperbash-modding/Hyperbash-ui-showcase.png',
+  },
+  {
+    title: 'Reel it in',
+    path: '/projects/reel-it-in',
+    image: '/reel-it-in/thumnail.jpg',
   },
   {
     title: 'CPU Rasterizer',
@@ -14,16 +29,6 @@ const projects = [
     title: 'Spelunky remake',
     path: '/projects/spelunky-remake',
     image: '/spelunky-remake/ScreenShot1.png',
-  },
-  {
-    title: 'Vulkan renderer',
-    path: '/projects/vulkan-renderer',
-    image: '/vulkan-renderer/vulkan-final.png',
-  },
-  {
-    title: 'HyperDash modding',
-    path: '/projects/hyperdash-hacking',
-    image: '/vulkan-renderer/vulkan-final.png',
   },
   {
     title: 'Website 2020',
@@ -89,6 +94,7 @@ const projects = [
 .project-link{
   display: grid;
   grid-template-rows: 5fr 1fr;
+  text-decoration: none;
 
   .project-img{
     background-size: cover;
