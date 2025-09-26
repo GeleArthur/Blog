@@ -106,3 +106,4 @@ Multithreading without clearing the back buffer errors.
 # links
 
 - https://lisyarus.github.io/blog/posts/implementing-a-tiny-cpu-rasterizer.html
+- Github: [https://github.com/GeleArthur/GP1-Rasterizer](https://github.com/GeleArthur/GP1-Rasterizer)
