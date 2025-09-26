@@ -15,26 +15,18 @@ Reel It In is a chaotic 1v3 couch multiplayer game where players use a fishing r
 
 ![GameScreen](/reel-it-in/main-game-start.png)
 
-# Game design
+# Gameplay
 
-Our restritions for this game was that it needed to be a couch co-op game. 
-The inspertion came from the niche minecraft mechanic where you can fish hook other players and pull them towards you.
+Our restrictions for this game was that it needed to be a couch co-op game. 
+The inspiration came from the niche minecraft mechanic where you can hook other players with the fishing rod and pull them towards you.
 
-The goal for our game was to avoid a cannon that is controlled by one of the players.
-We struggled with is to make it clear to the players that once a penguin has been hit that you swap locations. The cannon goes to the field and the field player goes to the cannon. 
+The goal for our game was to avoid snow balls fired by a cannon that is controlled by one of the players.
+When a player gets hit by the snow ball the cannon player and the field player swap places. 
 
 ## Play testing is key
 
 One big lesson I learned is **PLAY TEST**, **PLAY TEST** and **PLAY TEST**.
-In the second week we already had a game working. In hindsight we should have done a play test. If you are working on a project your mind gets fixated on one thing. Without extern feedback and you will never know if you made something fun.
+In the second week we already had a working game. In hindsight we should have done a play test. If you are working on a project your mind gets fixated on one thing. Without external feedback we didn't realize that the game wasn't fun enough. After we worked on the game for 7 weeks the project was already past prototyping but it still didn't feel right. The reeling was clunky and the goal was not clear. 
 
-We worked on the game for 7 weeks the project was pretty far in already and it still didn't feel right. The reeling didn't feel right the goal was not clear. My solution was to do a playtest. And immediately after I found multiple issues with game design I wrote down all the problems so I could discuses it with the team. I told the team that we need to do a big change. Which is never fun as you are throwing work away. Check out the [dev log week 7](https://gelearthur.itch.io/reelitin/devlog/934265/devlog-7-quite-the-turn). But luckily the game start to become fun.
-
-
-
-
-- Talk about the game design
-- How we pivited the other way 
-- What I will do differently next time
-- Unity and perforce
+Our solution was to do a play test. We found multiple issues with game design. We wrote down all the problems so we could discuss it with the team. I convinced the team that we needed to do a big change. This is never fun as you are throwing away work. Check out the [dev log week 7 quite the turn](https://gelearthur.itch.io/reelitin/devlog/934265/devlog-7-quite-the-turn). After some more play testing we got the fun factor in the game.
 
