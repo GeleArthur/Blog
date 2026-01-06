@@ -143,3 +143,7 @@ Pictures during development
 <video controls src="/floppy-bird/20241126-1903-55.8165859.mp4" />
 
 <video controls src="/floppy-bird/The_Pipes_keep_Comming.mp4" />
+
+# links
+
+- Github: [https://github.com/GeleArthur/Nes_Flappingbird](https://github.com/GeleArthur/Nes_Flappingbird)

@@ -27,8 +27,10 @@ You can also push matrix in opengl 1.0. This feature doesn't exists in opengl 2.
 
 
 
-- Github: [https://github.com/GeleArthur/Spelunky-Remake](https://github.com/GeleArthur/Spelunky-Remake)
-
 # Screenshot
 
 ![Spelunky remake](/spelunky-remake/ScreenShot1.png)
+
+# links
+
+- Github: [https://github.com/GeleArthur/Spelunky-Remake](https://github.com/GeleArthur/Spelunky-Remake)

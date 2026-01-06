@@ -85,3 +85,6 @@ So you have to handle the imgui input yourself. Luckily, imgui documentation is 
 There are functions in imgui so you can add input to the queue. But figuring this out and getting it to work was not easy :P.
 
 ![alt text](/vulkan-renderer/image-1.png)
+
+# links
+ - [https://github.com/GeleArthur/pretty-vulkan-printer](https://github.com/GeleArthur/pretty-vulkan-printer)
