@@ -433,6 +433,117 @@ This is great because now we can index the payload array right after each other.
 `subgroupBallotBitCount` Counts the total out which is the total count of meshlets that are visable.
 
 
+<details>
+  <summary>Full task shader</summary>
+    ```glsl
+    
+#version 460
+#pragma shader_stage(task)
+#extension GL_EXT_mesh_shader: enable
+#extension GL_KHR_shader_subgroup_ballot: enable
+#extension GL_EXT_buffer_reference: require
+#extension GL_EXT_shader_explicit_arithmetic_types_int64: require
+#extension GL_EXT_shader_8bit_storage: require
+#extension GL_EXT_shader_explicit_arithmetic_types: require
+#extension GL_GOOGLE_include_directive: require
+
+#define AS_GROUP_SIZE 32
+struct Payload {
+    uint meshlet_indices[AS_GROUP_SIZE];
+    bool visable[AS_GROUP_SIZE];
+    uint model_index;
+};
+
+layout (local_size_x = AS_GROUP_SIZE, local_size_y = 1, local_size_z = 1) in;
+
+struct ConeBounds {
+    vec4 sphere_bounds;
+    vec4 cone_axis;
+};
+
+layout (std430, set = 1, binding = 4) readonly buffer SphereBoundsIn {
+    ConeBounds SphereBounds[];
+};
+
+layout (push_constant) uniform PushConstant {
+    mat4 model;
+} pc;
+
+taskPayloadSharedEXT Payload payload;
+
+ConeBounds TransformCone(ConeBounds cone, mat4 matrix) {
+    vec3 scale = vec3(
+    length(matrix[0].xyz),
+    length(matrix[1].xyz),
+    length(matrix[2].xyz)
+    );
+    float maxScale = max(max(scale.x, scale.y), scale.z);
+
+    cone.sphere_bounds = vec4(
+    vec3(matrix * vec4(cone.sphere_bounds.xyz, 1.0f)),
+    cone.sphere_bounds.w * maxScale
+    );
+
+    cone.cone_axis.xyz = mat3(matrix) * cone.cone_axis.xyz;
+
+    return cone;
+}
+
+bool RaderCulling(ConeBounds cone) {
+    bool result = true;
+    vec3 ray = cone.sphere_bounds.xyz - sceneInfo.position;
+    float z_projections = dot(ray, sceneInfo.rader_cull.camera_z);
+
+    if (z_projections > sceneInfo.rader_cull.far_plane + cone.sphere_bounds.w || z_projections < sceneInfo.rader_cull.near_plane - cone.sphere_bounds.w) {
+        return false;
+    }
+
+    float y_projections = dot(ray, sceneInfo.rader_cull.camera_y);
+    float sphere_size_y = sceneInfo.rader_cull.sphere_factor_y * cone.sphere_bounds.w;
+    float y_height = z_projections * sceneInfo.rader_cull.tang;
+    if (y_projections > y_height + sphere_size_y || y_projections < -y_height - sphere_size_y) {
+        return false;
+    }
+
+    float x_projection = dot(ray, sceneInfo.rader_cull.camera_x);
+    float x_height = y_height * sceneInfo.rader_cull.ratio;
+    float sphere_size_x = sceneInfo.rader_cull.sphere_factor_x * cone.sphere_bounds.w;
+    if (x_projection > x_height + sphere_size_x || x_projection < -x_height - sphere_size_x) {
+        return false;
+    }
+
+    return result;
+}
+
+bool IsVisible(ConeBounds cone) {
+    if (!RaderCulling(cone)) {
+        return false;
+    }
+
+    return true;
+}
+
+void main()
+{
+    ConeBounds cone = TransformCone(SphereBounds[gl_GlobalInvocationID.x], pc.model);
+
+    bool visible = IsVisible(cone);
+
+    uvec4 ballot = subgroupBallot(visible);
+    if (visible) {
+        uint index = subgroupBallotExclusiveBitCount(ballot);
+        payload.meshlet_indices[index] = gl_GlobalInvocationID.x;
+        payload.visable[index] = visible;
+    }
+
+    uint visible_count = subgroupBallotBitCount(ballot);
+
+    EmitMeshTasksEXT(visible_count, 1, 1);
+}
+    ```
+</details>
+
+And thats it to get simple culling working. You can start adding backface culling[^4]. And even occulusion culling. Or add LOD support. Good luck and have fun :).
 
 
 # References
