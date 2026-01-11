@@ -4,14 +4,14 @@
 
 # Mesh shaders
 
-For about 2 months I have worked on using mesh shaders. This is a new technieck that improves and replaces the normal pipeline. One of the goals of the new pipeline is that you can render more geometry then before. I will be showing a vulkan impletion with glsl.
+For about 2 months I have worked on using mesh shaders. This is a new technique that improves and replaces the normal pipeline. One of the goals of the new pipeline is that you can render more geometry then before. I will be showing a vulkan impletion with glsl.
 
 ![meshlets](/mesh-shader/meshlets-2.png)
 
 
 # Mesh shaders
 
-When using the mesh shader pipeline some stages are remove. No more vertex, geometry or tesselation shaders. Instead they are replaced by the task/amplification shader (task for vulkan, amplification for dx12). 
+When using the mesh shader pipeline some stages are removable. No more vertex, geometry or tesselation shaders. Instead they are replaced by the task/amplification shader (task for vulkan, amplification for dx12). 
 Mesh shaders are like a combined vertex/geometry shader the output data goes into the rasterizer and goes through the fragment shader like normal.
 
 ![alt text](/mesh-shader/image-3.png)
@@ -82,10 +82,10 @@ This is a function that will tell the rasterizer how many triangles and vertices
 
 ## Creating meshlets
 
-To use mesh shader you need to generate meshlets they are small sections of the mesh. Generating these meshlets can be tricky luckly there are [other people](https://mastodon.gamedev.place/@zeux) who have already figured this out. 
+To use mesh shader you need to generate meshlets they are small sections of the mesh. Generating these meshlets can be tricky. Luckily there are [other people](https://mastodon.gamedev.place/@zeux) who have already figured this out. 
 [meshoptimizer](https://github.com/zeux/meshoptimizer) is a great library that can generate meshlets for you.
 
-We need to decided how many vertices and triangles the mesh shader is going to output per meshlet online I have found these numbers.
+We need to decided how many vertices and triangles the mesh shader is going to output per meshlet. Online I have found these numbers.
 - Nvidia recommends [^2] max_vertices 64, max_triangles 126. 
 - Amd recommends [^1] max_vertices 64, max_triangles 128.
 - Zeux (Creator of mesh-optimizer) recommends: [^3] max_vertices 64, max_triangles 96.
@@ -208,70 +208,69 @@ if (gl_LocalInvocationID.x < m.vertex_count) {
 }
 ```
 
-<details>
-  <summary>full glsl implementation</summary>
-    ```glsl
-    #version 460
-    #pragma shader_stage(mesh)
-    #extension GL_EXT_mesh_shader: enable
-    #extension GL_EXT_shader_8bit_storage: enable
+::: details Full Mesh shader
+```glsl
+#version 460
+#pragma shader_stage(mesh)
+#extension GL_EXT_mesh_shader: enable
+#extension GL_EXT_shader_8bit_storage: enable
 
-    #include "shared_structs.glsl"
-    #include "world_binds.glsl"
+#include "shared_structs.glsl"
+#include "world_binds.glsl"
 
-    layout (local_size_x = 126, local_size_y = 1, local_size_z = 1) in;
+layout (local_size_x = 126, local_size_y = 1, local_size_z = 1) in;
 
-    layout (triangles) out;
-    layout (max_vertices = 64, max_primitives = 126) out;
+layout (triangles) out;
+layout (max_vertices = 64, max_primitives = 126) out;
 
-    layout (std430, set = 1, binding = 0) readonly buffer MeshletIn {
-        Meshlet mesh_lets[];
-    };
-    layout (std140, set = 1, binding = 1) readonly buffer VertexIn {
-        Vertex vertices[];
-    };
-    layout (std430, set = 1, binding = 2) readonly buffer VertexIndicesIn {
-        uint vertex_indices[];
-    };
-    layout (std430, set = 1, binding = 3) readonly buffer TriangleIndicesIn {
-        uint8_t triangle_indices[];
-    };
-    layout (push_constant) uniform PushConstant {
-        mat4x4 model;
-    } pc;
+layout (std430, set = 1, binding = 0) readonly buffer MeshletIn {
+    Meshlet mesh_lets[];
+};
+layout (std140, set = 1, binding = 1) readonly buffer VertexIn {
+    Vertex vertices[];
+};
+layout (std430, set = 1, binding = 2) readonly buffer VertexIndicesIn {
+    uint vertex_indices[];
+};
+layout (std430, set = 1, binding = 3) readonly buffer TriangleIndicesIn {
+    uint8_t triangle_indices[];
+};
+layout (push_constant) uniform PushConstant {
+    mat4x4 model;
+} pc;
 
-    layout (location = 0) out vec3 vertexColor[];
+layout (location = 0) out vec3 vertexColor[];
 
-    void main()
+void main()
+{
+    Meshlet m = mesh_lets[gl_WorkGroupID.x];
+
+    if (gl_LocalInvocationIndex == 0)
     {
-        Meshlet m = mesh_lets[gl_WorkGroupID.x];
-
-        if (gl_LocalInvocationIndex == 0)
-        {
-            SetMeshOutputsEXT(m.vertex_count, m.triangle_count);
-        }
-
-        if (gl_LocalInvocationID.x < m.triangle_count) {
-            gl_PrimitiveTriangleIndicesEXT[gl_LocalInvocationID.x] = uvec3(
-            triangle_indices[m.triangle_offset + (gl_LocalInvocationID.x * 3)],
-            triangle_indices[m.triangle_offset + (gl_LocalInvocationID.x * 3) + 1],
-            triangle_indices[m.triangle_offset + (gl_LocalInvocationID.x * 3) + 2]
-            );
-        }
-
-        if (gl_LocalInvocationID.x < m.vertex_count) {
-            uint vertex_index = vertex_indices[m.vertex_offset + gl_LocalInvocationID.x];
-
-            vec4 location = sceneInfo.camera_projection_view * pc.model * vec4(vertices[vertex_index].position, 1.0);
-
-            gl_MeshVerticesEXT[gl_LocalInvocationID.x].gl_Position = location;
-
-            uint mhash = hash(gl_WorkGroupID.x);
-            vertexColor[gl_LocalInvocationID.x] = vec3(float(mhash & 255), float((mhash >> 8) & 255), float((mhash >> 16) & 255)) / 255.0;
-        }
+        SetMeshOutputsEXT(m.vertex_count, m.triangle_count);
     }
-    ```
-</details>
+
+    if (gl_LocalInvocationID.x < m.triangle_count) {
+        gl_PrimitiveTriangleIndicesEXT[gl_LocalInvocationID.x] = uvec3(
+        triangle_indices[m.triangle_offset + (gl_LocalInvocationID.x * 3)],
+        triangle_indices[m.triangle_offset + (gl_LocalInvocationID.x * 3) + 1],
+        triangle_indices[m.triangle_offset + (gl_LocalInvocationID.x * 3) + 2]
+        );
+    }
+
+    if (gl_LocalInvocationID.x < m.vertex_count) {
+        uint vertex_index = vertex_indices[m.vertex_offset + gl_LocalInvocationID.x];
+
+        vec4 location = sceneInfo.camera_projection_view * pc.model * vec4(vertices[vertex_index].position, 1.0);
+
+        gl_MeshVerticesEXT[gl_LocalInvocationID.x].gl_Position = location;
+
+        uint mhash = hash(gl_WorkGroupID.x);
+        vertexColor[gl_LocalInvocationID.x] = vec3(float(mhash & 255), float((mhash >> 8) & 255), float((mhash >> 16) & 255)) / 255.0;
+    }
+}
+```
+:::
 
 # Task shader
 
@@ -312,20 +311,20 @@ void main()
 
 For the mesh shader I will use the same one as above but with some little tweaks.
 
-```diff
-+ #define AS_GROUP_SIZE 32
-+ struct Payload {
-+    uint MeshletIndices[AS_GROUP_SIZE];
-+ };
+```glsl
+#define AS_GROUP_SIZE 32 // [!code ++]
+struct Payload { // [!code ++]
+   uint MeshletIndices[AS_GROUP_SIZE]; // [!code ++]
+}; // [!code ++]
 
-+ taskPayloadSharedEXT Payload payload;
+taskPayloadSharedEXT Payload payload; // [!code ++]
 
 void main()
 {
-+   uint meshletIndex = payload.MeshletIndices[gl_WorkGroupID.x];
+   uint meshletIndex = payload.MeshletIndices[gl_WorkGroupID.x]; // [!code ++]
 
--   Meshlet m = Meshlets[gl_WorkGroupID.x];
-+   Meshlet m = Meshlets[meshletIndex];
+    Meshlet m = Meshlets[gl_WorkGroupID.x]; // [!code --]
+    Meshlet m = Meshlets[meshletIndex]; // [!code ++]
 
     SetMeshOutputsEXT(m.vertex_count, m.triangle_count);
 
@@ -432,11 +431,8 @@ This is great because now we can index the payload array right after each other.
 
 `subgroupBallotBitCount` Counts the total out which is the total count of meshlets that are visable.
 
-
-<details>
-  <summary>Full task shader</summary>
-    ```glsl
-    
+::: details Full task shader
+```glsl
 #version 460
 #pragma shader_stage(task)
 #extension GL_EXT_mesh_shader: enable
@@ -540,8 +536,9 @@ void main()
 
     EmitMeshTasksEXT(visible_count, 1, 1);
 }
-    ```
-</details>
+```
+:::
+
 
 And thats it to get simple culling working. You can start adding backface culling[^4]. And even occulusion culling. Or add LOD support. Good luck and have fun :).
 
@@ -552,5 +549,4 @@ And thats it to get simple culling working. You can start adding backface cullin
 [^1]: https://gpuopen.com/download/GDC2024_Mesh_Shaders_in_AMD_RDNA_3_Architecture.pdf
 [^2]: https://developer.nvidia.com/blog/introduction-turing-mesh-shaders/#:~:text=code%2E-,We,triangles,-%2E
 [^3]: https://github.com/zeux/meshoptimizer#:~:text=max%5Fvertices%2064%2C%20max%5Ftriangles%2096
-
-
+[^4]: https://github.com/zeux/meshoptimizer#:~:text=if%20%28dot%28normalize%28cone%5Fapex%20%2D%20camera%5Fposition%29%2C%20cone%5Faxis%29%20%3E%3D%20cone%5Fcutoff%29%20reject%28%29%3B
