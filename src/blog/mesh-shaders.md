@@ -310,7 +310,7 @@ void main()
 }
 ```
 
-For the mesh shader I will use the same one as above but with some little teaks.
+For the mesh shader I will use the same one as above but with some little tweaks.
 
 ```diff
 + #define AS_GROUP_SIZE 32
@@ -339,11 +339,14 @@ void main()
 }
 ```
 
+Why use 32? NVIDIA gpu have a subgroupSize of 32. For culling I will use subgroups to create the payload data. For AMD you could use 64.
+
+
 
 # Culling
 
 Now for the real reason to be here the culling! 
-For culling we use spheres on the meshlets.
+The idea is to have spheres around every meshlet when that sphere is off screen it will not be invoked by the mesh shader.
 ![alt text](image-1.png)
 
 To create these spheres we can use mesh optimizer.
@@ -361,59 +364,54 @@ for (const auto& meshlet : model.meshlets){
 }
 ```
 
-This will generate a `meshopt_Bounds` which has more then just a sphere it also has a cone for backface culling.
-Once we have all you bounds in a array which is equal in size to the meshlet buffer we can send it over to the gpu and start culling.
+On the gpu side we can index the sphere_bounds the same way we select the meshlet using the `gl_GlobalInvocationID`.
 
-The most common frustum culling function is using 6 plane [https://learnopengl.com/Guest-Articles/2021/Scene/Frustum-Culling](https://learnopengl.com/Guest-Articles/2021/Scene/Frustum-Culling)
+I wont go into details on how to do frustum culling. Go here if you want to know more: [6 planes culling learnopengl.com](https://learnopengl.com/Guest-Articles/2021/Scene/Frustum-Culling)
 
-But I am going to use something different which is called radar culling which I found here [lighthouse3d.com](https://web.archive.org/web/20240527070358/http://www.lighthouse3d.com/tutorials/view-frustum-culling/radar-approach-testing-points/).
+### How to use culling in the task shader.
 
-But how do I added it to my task shader?
+We can access the correct sphere via `gl_GlobalInvocationID.x` because thats the same way we select the correct meshlet.
 
-We can access the correct sphere via `gl_GlobalInvocationID.x` because thats the same way we select the correct meshlet.\
-Now make sure to transform your sphere with the model matrix. And we need to scale the sphere by the largest axis otherwise meshlets could be outside of the sphere.
-
-Now we need to test if this sphere is visible. After we have figured out that it is visable we have to add it to the payload to start rendering it. The issue is that we need to add to a vector and on the gpu thats a problem. But we can use ballets to solve this issue. Using the `subgroupBallotExclusiveBitCount` (rolls off the tong) we count which thread succeded and get a index out of it which is the clostest in the array. Then we can count up all the visuable meshlets and tell the mesh shader you should render that amount.
-
-TODO REWRITE AND THROW AWAY
-
+We need to transform and scale the matrix correctly.
 ```glsl
-
-struct ShereBounds {
-    vec4 sphere_bounds;
-};
-
-layout (std430, set = 1, binding = 4) readonly buffer SphereBoundsIn {
-    ShereBounds SphereBounds[];
-};
-
-ShereBounds TransformSphere(ShereBounds cone, mat4 matrix) {
+SphereBounds TransformSphere(SphereBounds sphere, mat4 matrix) {
     vec3 scale = vec3(
         length(matrix[0].xyz),
         length(matrix[1].xyz),
         length(matrix[2].xyz)
     );
+    // Get the larged scale the model could be scaled to.
     float maxScale = max(max(scale.x, scale.y), scale.z);
 
-    cone.sphere_bounds = vec4(
-        (matrix * vec4(cone.sphere_bounds.xyz, 1.0f)).xyz,
-        cone.sphere_bounds.w * maxScale
+    // transform the sphere with the matrix and scale the size.
+    sphere.sphere_bounds = vec4(
+        (matrix * vec4(sphere.sphere_bounds.xyz, 1.0f)).xyz,
+        sphere.sphere_bounds.w * maxScale
     );
 
-    return cone;
+    return sphere;
 }
 
+```
+To scale the spheres correctly we take the largest scale axis and scale the sphere as we don't have a way to scale the sphere non uniform. 
+
+Now we need to test if the sphere is visible in our camera. I am using radar culling [link](https://web.archive.org/web/20240527070358/http://www.lighthouse3d.com/tutorials/view-frustum-culling/radar-approach-testing-points-ii/). 
+
+Now here is the issue we want to create a payload where we create a array of meshlets id's that are visible right next to each other like a push_back but we are on the gpu and don't have that. You could use atomics for this to sync with the other invocations but this is slow.\
+Instead we will use [subgroups](https://www.khronos.org/blog/vulkan-subgroup-tutorial)(wave intrinsics). 
+
+```glsl
 void main()
 {
-    ConeBounds cone = TransformCone(SphereBounds[gl_GlobalInvocationID.x], pc.model);
+    SphereBounds sphere = TransformSphere(sphere_bounds[gl_GlobalInvocationID.x], pc.model);
 
-    bool visible = IsVisible(cone);
+    bool visible = IsVisible(sphere);
 
     uvec4 ballot = subgroupBallot(visible);
     if (visible) {
         uint index = subgroupBallotExclusiveBitCount(ballot);
         payload.meshlet_indices[index] = gl_GlobalInvocationID.x;
-        payload.visable[index] = visible;
+        payload.visible[index] = visible;
     }
 
     uint visible_count = subgroupBallotBitCount(ballot);
@@ -422,77 +420,20 @@ void main()
 }
 ```
 
+To give a rundown of how subgroup group works.
+We create a subgroupBallot which is a uvec4 where each bit is on invocation in the subgroup. NVIDIA gpu's spawn by every 32 invocations. The subgroup invocation id gets set to true or false. Then we can use `subgroupBallotExclusiveBitCount` to count up until this subgroup_id all the once that are true. Example:
 
+|Invocation ID:|0|1|2|3|4
+|-|-|-|-|-|-|
+|Bit value|1|0|1|0|1|
+|ExclusiveBitCount:|0|1|1|2|2
 
-<!-- 
+This is great because now we can index the payload array right after each other.
 
-
-# Intro
-
-Mesh shaders is a new pipeline to render meshes. Instead of using the vertex -> tesselation -> geometry  -> fragment shaders. 
-We now have task -> mesh -> fragment shaders. With this we can do everything that the previous shaders could do and more.
-With this we can do everything the other shaders can plus culling parts of the mesh. If your model has a lot of vertices this is a great way to reduce them.
-
-
-## Meshlets
-
+`subgroupBallotBitCount` Counts the total out which is the total count of meshlets that are visable.
 
 
 
-What is a meshlet?
-A meshlet is a section on the mesh. These sections get backed by meshoptimizer 
-
-Looking at the picture a meshlet is each different colored patched. To create these different patches I use meshoptimizer.
-Meshoptimizer will run over each model and outputs buffers.
-
-
-
-
-Why use meshlets?
-
-Mesh shaders create triangles for the rasterizer. It does this like a compute shaders with special outputs plus any other data you want to send. When launching a mesh shader you use the same interface as a compute shader. You need set the thread group at compile time. And a dispatch size. 
-In the mesh shader you need to set the max triangle and vertex output count. Then in the shader you get access to 2 arrays one with the that output the vertex position and one that outputs the triangles these arrays are the size of the max triangle and vertex output. All threads of the mesh shader have access to the same output array. 
-
-Now to get more performed mesh shader output we should output 64 vertices and 126 triangles. This is because nvidia allocates the arrays every 128 bytes. Because the triangles need an extra 4 bytes we remove 2 triangles to fit in the extra 4 bytes.
-
-Now with these limitations in mind we can see why the meshlets look like selections on top of the mesh. Because we can only output 
-
-
-
-
-
-## Mesh shaders
-
-Mesh shaders are compute shaders that have a spesific output the gpu consumes.
-- SetMeshOutputsEXT(number, number); 
-The amount of vertex and triangles this mesh shader outputs.
-- gl_PrimitiveTriangleIndicesEXT
-A array of uvec3 that holds the index of the vertex
-- gl_MeshVerticesEXT 
-an array of vertex positions.
-
-Because mesh shaders are just a compute shader with special output you need to set some extra things.
-The amount of threads the compute shader needs to spawn.
-layout (local_size_x = 128, local_size_y = 1, local_size_z = 1) in;
-And what the maximum vertices and maximum triangles could be.
-layout (max_vertices = 64, max_primitives = 126) out;
-And what type of output you want.
-layout (triangles) out;
-
-- How can you use it glsl?
-- Wat is en waarom meshlets?
-- Hoe index je van de meshlets
-- Culling frustom
-- Back-face
-- Disuse occulusion culling
-- How does the task shader work? EmitMeshTasksEXT
-- Indirect 
-
-
-## Culling
-
-Using the task shader we [^1] can deiced to cull meshlets. There are multiple stragices for culling 
- -->
 
 # References
 
