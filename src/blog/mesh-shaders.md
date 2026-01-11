@@ -275,12 +275,134 @@ if (gl_LocalInvocationID.x < m.vertex_count) {
 
 # Task shader
 
-The real fun starts when adding the task shader this can invoke the mesh shader and give it some payload with it.
-One of the goals of this is to frustum cull meshlets.
+The real fun starts when adding the task shader this can invoke the mesh shader and give it some payload.
+One of the goals of this is to frustum culling meshlets.
 
-Adding one is pretty simple and only requires a small change to the mesh shader.
+Task shaders are dispatched the same way as mesh shaders. But with task shaders we can spawn some amount of mesh shaders.
+
+In the image below. I am calling `vkCmdDrawMeshTasksEXT(cmd,2,1,1)` it will invoke 2 thread groups of task shaders. Each group will produce its own payload. We use the threads of the group to fill the payload and make sure that all threads invoke the same amount of mesh shaders!\
+Then each mesh shader that got invoked by the task shader gets access to the payload. This payload can be access by a entire thread group.
+
+![alt text](image.png)
+
+### glsl example
+
+Every thread is going to fill the payload for one meshlet. We spawn 32 threads per workgroup. So we call `vkCmdDrawMeshTasksEXT(cmd, model.meshlet_count / 32 + 1, 1, 1)`.
 
 ```glsl
+#define AS_GROUP_SIZE 32
+layout (local_size_x = AS_GROUP_SIZE) in;
+
+struct Payload {
+    uint MeshletIndices[AS_GROUP_SIZE];
+};
+
+// Payload for mesh shader declaration
+taskPayloadSharedEXT Payload payload;
+
+void main()
+{
+    // Every thread sets the meshlet id on which the mesh shader needs to work on.
+    payload.MeshletIndices[gl_LocalInvocationID.x] = gl_GlobalInvocationID.x;
+
+    // How many mesh shaders do we spawn?
+    EmitMeshTasksEXT(AS_GROUP_SIZE, 1, 1);
+}
+```
+
+For the mesh shader I will use the same one as above but with some little teaks.
+
+```diff
++ #define AS_GROUP_SIZE 32
++ struct Payload {
++    uint MeshletIndices[AS_GROUP_SIZE];
++ };
+
++ taskPayloadSharedEXT Payload payload;
+
+void main()
+{
++   uint meshletIndex = payload.MeshletIndices[gl_WorkGroupID.x];
+
+-   Meshlet m = Meshlets[gl_WorkGroupID.x];
++   Meshlet m = Meshlets[meshletIndex];
+
+    SetMeshOutputsEXT(m.vertex_count, m.triangle_count);
+
+    if (gl_LocalInvocationID.x < m.triangle_count) {
+        // ...
+    }
+
+    if (gl_LocalInvocationID.x < m.vertex_count) {
+       // ...
+    }
+}
+```
+
+
+# Culling
+
+Now for the real reason to be here the culling! 
+For culling we use spheres on the meshlets.
+![alt text](image-1.png)
+
+To create these spheres we can use mesh optimizer.
+```cpp
+std::vector<glm::vec4> sphere_bounds;
+for (const auto& meshlet : model.meshlets){
+    meshopt_Bounds bounds = meshopt_computeMeshletBounds(
+        &meshlet_vertices[meshlet.vertex_offset],
+        &meshlet_triangles[meshlet.triangle_offset],
+        meshlet.triangle_count,
+        model.vertices.data(),
+        model.vertices.size(),
+        sizeof(float) * 3);
+    sphere_bounds.emplace_back(bounds.center[0], bounds.center[1], bounds.center[2], bounds.radius);
+}
+```
+
+This will generate a `meshopt_Bounds` which has more then just a sphere it also has a cone for backface culling.
+Once we have all you bounds in a array which is equal in size to the meshlet buffer we can send it over to the gpu and start culling.
+
+The most common frustum culling function is using 6 plane [https://learnopengl.com/Guest-Articles/2021/Scene/Frustum-Culling](https://learnopengl.com/Guest-Articles/2021/Scene/Frustum-Culling)
+
+But I am going to use something different which is called radar culling which I found here [lighthouse3d.com](https://web.archive.org/web/20240527070358/http://www.lighthouse3d.com/tutorials/view-frustum-culling/radar-approach-testing-points/).
+
+But how do I added it to my task shader?
+
+We can access the correct sphere via `gl_GlobalInvocationID.x` because thats the same way we select the correct meshlet.\
+Now make sure to transform your sphere with the model matrix. And we need to scale the sphere by the largest axis otherwise meshlets could be outside of the sphere.
+
+Now we need to test if this sphere is visible. After we have figured out that it is visable we have to add it to the payload to start rendering it. The issue is that we need to add to a vector and on the gpu thats a problem. But we can use ballets to solve this issue. Using the `subgroupBallotExclusiveBitCount` (rolls off the tong) we count which thread succeded and get a index out of it which is the clostest in the array. Then we can count up all the visuable meshlets and tell the mesh shader you should render that amount.
+
+TODO REWRITE AND THROW AWAY
+
+```glsl
+
+struct ShereBounds {
+    vec4 sphere_bounds;
+};
+
+layout (std430, set = 1, binding = 4) readonly buffer SphereBoundsIn {
+    ShereBounds SphereBounds[];
+};
+
+ShereBounds TransformSphere(ShereBounds cone, mat4 matrix) {
+    vec3 scale = vec3(
+        length(matrix[0].xyz),
+        length(matrix[1].xyz),
+        length(matrix[2].xyz)
+    );
+    float maxScale = max(max(scale.x, scale.y), scale.z);
+
+    cone.sphere_bounds = vec4(
+        (matrix * vec4(cone.sphere_bounds.xyz, 1.0f)).xyz,
+        cone.sphere_bounds.w * maxScale
+    );
+
+    return cone;
+}
+
 void main()
 {
     ConeBounds cone = TransformCone(SphereBounds[gl_GlobalInvocationID.x], pc.model);
@@ -298,7 +420,6 @@ void main()
 
     EmitMeshTasksEXT(visible_count, 1, 1);
 }
-
 ```
 
 
