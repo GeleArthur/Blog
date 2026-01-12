@@ -561,9 +561,7 @@ And thats it to get simple culling working. You can start adding backface cullin
 The goal of this blog post was to use it together with other resources to get mesh shaders working. We implemented mesh shaders with task shader and meshlets and a some culling. You can still try to add backface culling and LOD.
 
 
-
 # References
-
 
 [^1]: https://gpuopen.com/download/GDC2024_Mesh_Shaders_in_AMD_RDNA_3_Architecture.pdf
 [^2]: https://developer.nvidia.com/blog/introduction-turing-mesh-shaders/#:~:text=code%2E-,We,triangles,-%2E
