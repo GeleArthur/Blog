@@ -1,23 +1,30 @@
 ---
-~
+outline: [1, 5]
 ---
 
 # Mesh shaders
 
-For about 2 months I have worked on using mesh shaders. This is a new technique that improves and replaces the regular pipeline. It brings the compute pipeline to the graphics pipeline. One of the goals of the new pipeline is that you can render more geometry then before. I will be showing a vulkan impletion with glsl.
+For about 2 months I have worked on using mesh shaders. This is a new technique that improves and replaces the regular pipeline. It brings the compute pipeline to the graphics pipeline. One of the goals of the new pipeline is that you can render more geometry than before. I will be showing a vulkan implementation with glsl.
 
 ![meshlets](/mesh-shader/meshlets-2.png)
 
 
-# Mesh shaders
+# Mesh shader pipeline
 When using the mesh shader pipeline the vertex, geometry and tesselation stages are removed. They are replaced by the task shader and mesh shader. 
 
 The new pipeline is.
 ![alt text](/mesh-shader/image-3.png)
 
-The mesh shaders use the compute pipeline so we have to export to a buffer that the rasterizer can consume. These are vec4 coordinates plus anything extra we want to add.
+::: info task shader
+The task shader stage is optional. It works as a compute shader and can be programed to emit (or not) mesh shaders. There is a limit on how many mesh shaders can be spawned from one task shader. This depends on your gpu.
+:::
 
-Here is a minimal example to output 1 triangle without any input.
+::: info mesh shader
+The mesh shader is required. It works also like a compute shader. It can produces vertices and triangles(primitives) to the rasterizer. There are limitations per gpu on how many vertices and triangles can be produced. DirectX limits it to 256. Most of the time you want to output about twice as many primitives as vertices [^1]
+:::
+
+To start here is a simple example mesh shader that only outputs 1 triangle. I will explain every keyword. Later I will start using meshlets to render full models.
+
 
 ```glsl
 #version 460
@@ -30,6 +37,9 @@ layout (local_size_x = 3) in;
 // set the count for gl_MeshVerticesEXT[] and gl_PrimitiveTriangleIndicesEXT[] arrays
 layout (max_vertices = 3, max_primitives = 1) out;
 layout (triangles) out;
+
+// Export custom user data on the vertex. Same size as gl_MeshVerticesEXT
+layout (location = 0) out vec3 vertex_color_out[];
 
 void main()
 {
@@ -49,6 +59,7 @@ void main()
     // Because we only have 1 triangle only 1 thread needs to export
     if (gl_LocalInvocationID.x < 1)
     {
+        // Using the gl_LocalInvocationID a index for the output arrays.
         // Set the index that this triangle should use
         gl_PrimitiveTriangleIndicesEXT[gl_LocalInvocationID.x] = uvec3(0, 1, 2);
     }
@@ -58,16 +69,16 @@ void main()
     {
         // Gets the positions from the array and output it.
         gl_MeshVerticesEXT[gl_LocalInvocationID.x].gl_Position = positions[gl_LocalInvocationID.x];
+        vertex_color_out[gl_LocalInvocationID.x] = vec3(1,0,0);
     }
 }
 ```
 
-There are a couple new variables here. 
+::: info gl_PrimitiveTriangleIndicesEXT
+This is a array of `uvec3` that holds the indices of the triangles.
+:::
 
-**gl_PrimitiveTriangleIndicesEXT**
-This is a array of `uvec3` that holds the indices of the triangles your going to output.
-
-**gl_MeshVerticesEXT**
+::: info gl_MeshVerticesEXT
 An array with the gl_MeshPerVertexEXT struct only gl_Position is relevant for this example.
 ```glsl
 struct gl_MeshPerVertexEXT {
@@ -77,35 +88,49 @@ struct gl_MeshPerVertexEXT {
     float gl_CullDistance[];
 }
 ```
+:::
 
-**layout (max_vertices = number, max_primitives = number) out;**
+::: info layout (max_vertices = number, max_primitives = number) out;
 This sets the size of the gl_PrimitiveTriangleIndicesEXT and gl_MeshVerticesEXT arrays. 
+:::
 
-**SetMeshOutputsEXT(vertex_count, triangle_count)**
+::: info SetMeshOutputsEXT(vertex_count, triangle_count)
 This is a function that will tell the rasterizer how many triangles and vertices there are in the arrays *gl_PrimitiveTriangleIndicesEXT* and *gl_MeshVerticesEXT*. So we don't have to fill up the full array.
+:::
 
-#### hlsl to glsl compute variables
-| hlsl | glsl | descriptions |
-|------|------| -|
-|SV_GroupID| gl_WorkGroupID| index of the global work group 
-|SV_GroupThreadID| gl_LocalInvocationID| local work id within the work group 
-|SV_DispatchThreadID| gl_GlobalInvocationID|  gl_WorkGroupID * gl_WorkGroupSize + gl_LocalInvocationID
+Creating the pipeline for the mesh shader is the extract same as the normal pipeline. But the `pVertexInputState` and `pInputAssemblyState` are ignored. 
+
+```cpp
+PipelineLayoutBuilder().build(m_context.device->get_device(), m_pipeline_layout_spheres);
+
+GraphicsPipelineBuilder()
+    .add_shader("shaders/example.mesh", VK_SHADER_STAGE_MESH_BIT_EXT)
+    .add_shader("shaders/example.frag", VK_SHADER_STAGE_FRAGMENT_BIT)
+    .set_color_format(std::array{ m_context.swapchain->get_swapchain_surface_format().format })
+    .set_pipeline_layout(m_pipeline_layout_spheres)
+    .build(m_context.device->get_device(), m_pipeline_spheres);
+```
+
+In vulkan to render this shader you need to call `vkCmdDrawMeshTasksEXT(cmd, 1, 1, 1)`
+
+Now that we can render one triangle we want to render full models. Then we are going to need generate meshlets.
+
 
 ## Creating meshlets
 
-To use mesh shader you need to generate meshlets they are small sections of the mesh. Generating these meshlets can be tricky. Luckily there are [other people](https://mastodon.gamedev.place/@zeux) who have already figured this out. 
-[meshoptimizer](https://github.com/zeux/meshoptimizer) is a great library that can generate meshlets for you.
+To render a model with mesh shaders you need to generate meshlets they are small sections of the mesh. Generating these yourself meshlets can be tricky. I opted for using a library [meshoptimizer](https://github.com/zeux/meshoptimizer) it has a lot of features but it can also generate meshlets for you.
 
-We need to decided how many vertices and triangles each meshlet maximum can have. So we can set that in our mesh shader. Online I have found these numbers.
+ 
+Meshoptimizer need to know how many vertices and triangles each meshlet maximum can have. These numbers need to be the same in the mesh shader.
 ::: info How many triangles?
 - Nvidia recommends: max_vertices 64, max_triangles 126. [^2]
-- Amd recommends:  max_vertices 64, max_triangles 128. [^1]
-- Zeux (Creator of mesh-optimizer) recommends: max_vertices 64, max_triangles 96. [^3] 
+- Amd recommends:  max_vertices 64, max_triangles 128. [^3]
+- Zeux (Creator of mesh-optimizer) recommends: max_vertices 64, max_triangles 96. [^4] 
 :::
 
 I am going to use Nvidia's recommendation.
 
-Here is an example on how to generate meshlets using mesh optimizer. 
+Here is an example on how to generate meshlets using mesh optimizer. The `cone_weight` is for backface culling which I wont discuses but you can find resource [here](https://github.com/zeux/meshoptimizer#:~:text=if%20%28dot%28normalize%28cone%5Fapex%20%2D%20camera%5Fposition%29%2C%20cone%5Faxis%29%20%3E%3D%20cone%5Fcutoff%29%20reject%28%29%3B).
 ```cpp
 // Magic values explained below
 constexpr size_t max_vertices = 64;
@@ -140,7 +165,7 @@ meshlet_triangles.resize(last.triangle_offset + last.triangle_count * 3);
 meshlets.resize(meshlet_count);
 ```
 
-Mesh optimizer exports multiple data structures here are all of them and what they do.
+Mesh optimizer exports multiple data structures:
 ::: info meshlets
 This is a struct which holds the offset and count for both the vertex and triangle.\
 ![alt text](/mesh-shader/image-1.png)
@@ -168,7 +193,7 @@ We first need to bind all of buffers that we need for the draw call these are.
 - `uint8_t triangle_indices[]` Generated from meshoptimizer
 :::
 
-To launch a mesh shader you call `vkCmdDrawMeshTasksEXT(cmd_buffer, countX, countY, countZ)`.
+To launch a mesh shader you call `vkCmdDrawMeshTasksEXT(cmd_buffer, meshlet_count, 1, 1)`.
 
 Each meshlet gets its own workgroup. So countX is going to be the amount of meshlets. Then each invocation in that workgroup will output one triangle and one vertex.
 
@@ -368,7 +393,8 @@ for (const auto& meshlet : model.meshlets){
 
 On the gpu side we can index the sphere_bounds the same way we select the meshlet using the `gl_GlobalInvocationID`.
 
-I wont go into details on how to do frustum culling. Go here if you want to know more: [6 planes culling learnopengl.com](https://learnopengl.com/Guest-Articles/2021/Scene/Frustum-Culling)
+I won't go into details on how to do frustum culling. Go here if you want to know more: \
+[6 planes culling learnopengl.com](https://learnopengl.com/Guest-Articles/2021/Scene/Frustum-Culling)
 
 ### How to use culling in the task shader.
 
@@ -397,9 +423,9 @@ SphereBounds TransformSphere(SphereBounds sphere, mat4 matrix) {
 
 ```
 
-Now we need to test if the sphere is visible in our camera. I am using radar culling [link](https://web.archive.org/web/20240527070358/http://www.lighthouse3d.com/tutorials/view-frustum-culling/radar-approach-testing-points-ii/). 
+Now we need to test if the sphere is visible in our camera. I am using [radar culling](https://web.archive.org/web/20240527070358/http://www.lighthouse3d.com/tutorials/view-frustum-culling/radar-approach-testing-points-ii/). 
 
-Now here is the issue we want to create a payload where we create a array of meshlets id's that are visible right next to each other like a push_back but we are on the gpu and don't have that. You could use atomics for this to sync with the other invocations but this is slow.\
+Now here is the issue we want to create a payload where we create a array of meshlets ids that are visible right next to each other like a push_back but we are on the gpu and don't have that. You could use atomics for this to sync with the other invocations but this is slow.\
 Instead we will use [subgroups](https://www.khronos.org/blog/vulkan-subgroup-tutorial)(wave intrinsics). 
 
 ```glsl
@@ -414,17 +440,17 @@ void main()
     // Create a subgroup ballot of all the results we got filling in the uvec4.
     uvec4 ballot = subgroupBallot(visible);
 
-    // If the meshlet is not visable don't add it to this list of meshlets.
+    // If the meshlet is not visible don't add it to this list of meshlets.
     if (visible) {
         // Count all bits that are 1 until you are at your own subgroup id.
-        // Every invocation that is visable gets the result as: 0,1,2,3,4,5,6
+        // Every invocation that is visible gets the result as: 0,1,2,3,4,5,6
         uint index = subgroupBallotExclusiveBitCount(ballot);
 
         // Use the index to write the payload data and give the meshlet id.
         payload.meshlet_indices[index] = gl_GlobalInvocationID.x;
     }
 
-    // Get the total count of the visable meshlets
+    // Get the total count of the visible meshlets
     uint visible_count = subgroupBallotBitCount(ballot);
 
     // Invoke visible_count many mesh shaders
@@ -442,7 +468,7 @@ We create a subgroupBallot which is a uvec4 where each bit is on invocation in t
 
 This is great because now we can index the payload array right after each other.
 
-`subgroupBallotBitCount` Counts the total out which is the total count of meshlets that are visable.
+`subgroupBallotBitCount` Counts the total out which is the total count of meshlets that are visible.
 
 ::: details Full task shader
 ```glsl
@@ -552,18 +578,32 @@ void main()
 ```
 :::
 
-
-And thats it to get simple culling working. You can start adding backface culling[^4]. 
+And that's it to get simple culling working. You can start adding backface culling[^4]. 
 
 
 # End notes
 
-The goal of this blog post was to use it together with other resources to get mesh shaders working. We implemented mesh shaders with task shader and meshlets and a some culling. You can still try to add backface culling and LOD.
+Now you know how to get started with mesh shaders. We implement mesh shaders with task shader and meshlets and some culling. If you want continue try adding [backface culling](https://github.com/zeux/meshoptimizer#:~:text=if%20%28dot%28normalize%28cone%5Fapex%20%2D%20camera%5Fposition%29%2C%20cone%5Faxis%29%20%3E%3D%20cone%5Fcutoff%29%20reject%28%29%3B) and [LOD](https://chaoticbob.github.io/2024/02/21/mesh-shading-part-5.html).
+
+
+
+
+## other sources
+- https://chaoticbob.github.io/2024/01/27/mesh-shading-part-4.html
+- https://developer.nvidia.com/blog/introduction-turing-mesh-shaders/
+
+
+## hlsl to glsl keywords
+| hlsl | glsl | descriptions |
+|------|------| -|
+|SV_GroupID| gl_WorkGroupID| index of the global work group 
+|SV_GroupThreadID| gl_LocalInvocationID| local work id within the work group 
+|SV_DispatchThreadID| gl_GlobalInvocationID|  gl_WorkGroupID * gl_WorkGroupSize + gl_LocalInvocationID
 
 
 # References
 
-[^1]: https://gpuopen.com/download/GDC2024_Mesh_Shaders_in_AMD_RDNA_3_Architecture.pdf
+[^1]: https://gpuopen.com/learn/mesh_shaders/mesh_shaders-optimization_and_best_practices/
 [^2]: https://developer.nvidia.com/blog/introduction-turing-mesh-shaders/#:~:text=code%2E-,We,triangles,-%2E
-[^3]: https://github.com/zeux/meshoptimizer#:~:text=max%5Fvertices%2064%2C%20max%5Ftriangles%2096
-[^4]: https://github.com/zeux/meshoptimizer#:~:text=if%20%28dot%28normalize%28cone%5Fapex%20%2D%20camera%5Fposition%29%2C%20cone%5Faxis%29%20%3E%3D%20cone%5Fcutoff%29%20reject%28%29%3B
+[^3]: https://gpuopen.com/download/GDC2024_Mesh_Shaders_in_AMD_RDNA_3_Architecture.pdf
+[^4]: https://github.com/zeux/meshoptimizer
